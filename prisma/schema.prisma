@@ -1,0 +1,118 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPER_ADMIN
+  COACH
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  passwordHash   String
+  name           String
+  role           Role      @default(COACH)
+  commissionRate Float     @default(0.0)
+  phone          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  clients        Client[]  @relation("CoachClients")
+  routines       Routine[] @relation("CoachRoutines")
+
+  @@map("users")
+}
+
+model Client {
+  id               String          @id @default(uuid())
+  name             String
+  email            String?
+  phone            String?
+  membershipPlan   String
+  membershipExpiry DateTime
+  coachId          String
+  coach            User            @relation("CoachClients", fields: [coachId], references: [id], onDelete: Cascade)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  payments         Payment[]
+  routines         Routine[]
+  metrics          MetricHistory[]
+
+  @@map("clients")
+}
+
+model Exercise {
+  id           String             @id @default(uuid())
+  name         String             @unique
+  muscleGroup  String
+  notes        String?
+  routineItems RoutineItem[]
+
+  @@map("exercises")
+}
+
+model Routine {
+  id          String        @id @default(uuid())
+  name        String
+  dayOfWeek   String
+  clientId    String
+  client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  coachId     String
+  coach       User          @relation("CoachRoutines", fields: [coachId], references: [id], onDelete: Cascade)
+  items       RoutineItem[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("routines")
+}
+
+model RoutineItem {
+  id         String   @id @default(uuid())
+  routineId  String
+  routine    Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  exerciseId String
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  sets       Int
+  reps       String
+  restSec    Int
+  rpe        Int?
+  orderIndex Int
+
+  @@map("routine_items")
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  amount        Float
+  paymentDate   DateTime @default(now())
+  nextDueDate   DateTime
+  paymentMethod String
+  reference     String   @unique
+  createdAt     DateTime @default(now())
+
+  @@map("payments")
+}
+
+model MetricHistory {
+  id         String   @id @default(uuid())
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  recordedAt DateTime @default(now())
+  weightKg   Float
+  bodyFatPct Float?
+  chestCm    Float?
+  waistCm    Float?
+  armCm      Float?
+  notes      String?
+
+  @@map("metric_history")
+}
